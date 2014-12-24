@@ -6,9 +6,6 @@ from gensim import corpora, matutils
 import MeCab
 import codecs
 
-codecs.getwriter(sys.stdout.encoding)(sys.stdout, errors='replace')
-DATA_DIR_PATH = './text/'
-DICTIONARY_FILE_NAME = 'livedoordic.txt'
 mecab = MeCab.Tagger('mecabrc')
 from sklearn.ensemble import RandomForestClassifier
 
@@ -78,7 +75,9 @@ def get_vector(dictionary, content):
 
         
 def train(dense_list,test_dense):
-
+    '''
+    データの学習と検証
+    '''
     data_train=[]
 
     data_train=dense_list
@@ -132,14 +131,15 @@ def create_words(text_list):
             words_list.append(tmp_words[0])
     return words_list
         
-def get_dictionary(create_flg=False, file_name=DICTIONARY_FILE_NAME):
+def get_dictionary(create_flg=True):
     '''
-    辞書を作る
+    辞書を作る,特徴語のリストを作る、検証をする
     '''
     if create_flg or not os.path.exists(file_name):
-         
+        #データ名
         text_list=["bon.txt","sadao.txt"]
-        
+
+        #テキストを名詞に分解する
         words=create_words(text_list)
         
         # 辞書作成
@@ -151,10 +151,10 @@ def get_dictionary(create_flg=False, file_name=DICTIONARY_FILE_NAME):
         #特徴語のリストを作成
         dense_list = get_vector(dictionary,words)
 
-        #今回テストで使いたいデータ
+        #今回テストで使いたい文章。これがbonのツイートなのか貞夫のツイートなのか判別したい
         test_contents="電車でアホそうなやつがONE PIECEの58巻読んでたから「バカな息子をそれでも愛そう…」のシーンでホロリと泣き出すかなと思ってチラチラ見てたら途中で降りてった"
         
-        #テスト用の特徴語リスト
+        #テスト用の特徴語リストを作成
         test_dense = create_test_data(test_contents)
         
         #学習＆検証
