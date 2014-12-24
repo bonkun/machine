@@ -5,10 +5,20 @@ import re
 from gensim import corpora, matutils
 import MeCab
 import codecs
-
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy
+from sklearn import decomposition
 mecab = MeCab.Tagger('mecabrc')
 from sklearn.ensemble import RandomForestClassifier
-
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import AdaBoostClassifier,ExtraTreesClassifier ,GradientBoostingClassifier, RandomForestClassifier
+from sklearn.decomposition import TruncatedSVD
+from sklearn import datasets
+from sklearn.cross_validation import cross_val_score
+import numpy
+import sklearn.decomposition
+ 
 
 def get_file_content(file_path):
     '''
@@ -71,8 +81,22 @@ def get_vector(dictionary, content):
         tmp = dictionary.doc2bow(item)
         dense = list(matutils.corpus2dense([tmp], num_terms=len(dictionary)).T[0])
         dense_list.append(dense)
-    return dense_list
+    #次元削除        
+    lsa = TruncatedSVD(1)
+    result = lsa.fit_transform(dense_list)
+    return result
 
+def get_vector2(dictionary, content):
+    '''
+    ある記事の特徴語カウント
+    '''
+    dense_list=[]
+    for item in content:
+        tmp = dictionary.doc2bow(item)
+        dense = list(matutils.corpus2dense([tmp], num_terms=len(dictionary)).T[0])
+        dense_list.append(dense)
+        
+    return dense_list
         
 def train(dense_list,test_dense):
     '''
@@ -112,7 +136,10 @@ def create_test_data(test_contents):
     # 保存しておく
     dictionary.save_as_text("test.txt")
     
-    test_dense = get_vector(dictionary, words)
+    test_dense = get_vector2(dictionary, words)
+    #次元削除
+    lsa2 = TruncatedSVD(7)
+    test_dense = lsa2.fit_transform(test_dense)
 
     return test_dense
     
@@ -152,7 +179,7 @@ def get_dictionary(create_flg=True):
         dense_list = get_vector(dictionary,words)
 
         #今回テストで使いたい文章。これがbonのツイートなのか貞夫のツイートなのか判別したい
-        test_contents="電車でアホそうなやつがONE PIECEの58巻読んでたから「バカな息子をそれでも愛そう…」のシーンでホロリと泣き出すかなと思ってチラチラ見てたら途中で降りてった"
+        test_contents="だめだーー。全くできん。貞夫のパクツイを検知するプログラムを早く完成させないと貞夫が図に乗りまくる"
         
         #テスト用の特徴語リストを作成
         test_dense = create_test_data(test_contents)
