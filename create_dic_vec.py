@@ -82,9 +82,7 @@ def get_vector(dictionary, content):
         dense = list(matutils.corpus2dense([tmp], num_terms=len(dictionary)).T[0])
         dense_list.append(dense)
     #次元削除        
-    lsa = TruncatedSVD(1)
-    result = lsa.fit_transform(dense_list)
-    return result
+    return dense_list
 
 def get_vector2(dictionary, content):
     '''
@@ -105,7 +103,6 @@ def train(dense_list,test_dense):
     data_train=[]
 
     data_train=dense_list
-    
     label_train = [1,2]
 
     estimator = RandomForestClassifier()
@@ -125,23 +122,21 @@ def test_data(contents,words):
 
     return words
 
-def create_test_data(test_contents):
+def create_test_data(test_contents,noun_words):
     
     ret={}
     ret['test']=test_contents
-    words = get_words(ret)
-    
+    test_words = get_words(ret)
+    noun_words.append(test_words[0])
+
     # 辞書作成
-    dictionary = corpora.Dictionary(words)
+    dictionary = corpora.Dictionary(noun_words)
     # 保存しておく
     dictionary.save_as_text("test.txt")
     
-    test_dense = get_vector2(dictionary, words)
-    #次元削除
-    lsa2 = TruncatedSVD(7)
-    test_dense = lsa2.fit_transform(test_dense)
+    test_dense = get_vector2(dictionary, test_words)
 
-    return test_dense
+    return [dictionary,test_dense]
     
     
 def create_words(text_list):
@@ -168,22 +163,18 @@ def get_dictionary(create_flg=True):
 
         #テキストを名詞に分解する
         words=create_words(text_list)
-        
-        # 辞書作成
-        dictionary = corpora.Dictionary(words)
 
-        # 保存しておく
-        dictionary.save_as_text("dic.txt")
+        #今回テストで使いたい文章。これがbonのツイートなのか貞夫のツイートなのか判別したい
+        test_contents="電車男の報告を待つ緊張に耐えられず、妄想に走る者、壊れる者が出始めた頃、電車男が舞い戻ってきた。 そしてゆっくりと正確に爆撃を始めた。"
+
+        train_words = list(words)
+
+        #テスト用の特徴語リストを作成
+        dictionary,test_dense = create_test_data(test_contents,train_words)
 
         #特徴語のリストを作成
         dense_list = get_vector(dictionary,words)
 
-        #今回テストで使いたい文章。これがbonのツイートなのか貞夫のツイートなのか判別したい
-        test_contents="だめだーー。全くできん。貞夫のパクツイを検知するプログラムを早く完成させないと貞夫が図に乗りまくる"
-        
-        #テスト用の特徴語リストを作成
-        test_dense = create_test_data(test_contents)
-        
         #学習＆検証
         train(dense_list,test_dense)
         
