@@ -18,7 +18,7 @@ from sklearn import datasets
 from sklearn.cross_validation import cross_val_score
 import numpy
 import sklearn.decomposition
- 
+from sklearn.cross_validation import train_test_split 
 
 def get_file_content(file_path):
     '''
@@ -72,9 +72,16 @@ def get_contents(text_title):
     return ret
 
 
+def filter_dictionary(dictionary):
+    '''
+    低頻度と高頻度のワードを除く感じで
+    '''
+    dictionary.filter_extremes(no_below=1, no_above=0.2)  # この数字はあとで変えるかも
+    return dictionary
+
 def get_vector(dictionary, content):
     '''
-    ある記事の特徴語カウント
+    学習用のデータをベクトルに変換する
     '''
     dense_list=[]
     for item in content:
@@ -86,34 +93,36 @@ def get_vector(dictionary, content):
 
 def get_vector2(dictionary, content):
     '''
-    ある記事の特徴語カウント
+    テスト用のデータをベクトルに変換す
     '''
-    dense_list=[]
+    test_dense_list=[]
     for item in content:
         tmp = dictionary.doc2bow(item)
         dense = list(matutils.corpus2dense([tmp], num_terms=len(dictionary)).T[0])
-        dense_list.append(dense)
-        
-    return dense_list
-        
+        test_dense_list.append(dense)
+    
+    return test_dense_list
+
+                
 def train(dense_list,test_dense):
     '''
     データの学習と検証
     '''
+    #学習用のデータ
     data_train=[]
-
     data_train=dense_list
-    label_train = [1,2]
-
+    #ラベル
+    label_train = ["bon","sadao"]
     estimator = RandomForestClassifier()
-
     # 学習させる
     estimator.fit(data_train, label_train)
-    test_data = test_dense
+    #順番に判定していく。test_dense＝テスト用のデータのベクトルリスト
+    for item in test_dense:
 
-    label_predict = estimator.predict_proba(test_data)
-    print(label_predict)
-    
+        label_predict = estimator.predict_proba(item)
+        print (label_predict)
+
+
 def test_data(contents,words):
 
     test_words=get_words(contents)
@@ -122,23 +131,58 @@ def test_data(contents,words):
 
     return words
 
-def create_test_data(test_contents,noun_words):
-    
+
+#辞書の作成とテスト用データを名詞分解する
+def create_test_dic(test_file_name,noun_words):
     ret={}
-    ret['test']=test_contents
-    test_words = get_words(ret)
-    noun_words.append(test_words[0])
+    tweet_list=[]
 
-    # 辞書作成
-    dictionary = corpora.Dictionary(noun_words)
-    # 保存しておく
-    dictionary.save_as_text("test.txt")
+    #テスト用データを一行ずつ読む
+    f = open(test_file_name)
+    sadao2 = f.readlines()
+    f.close()
+
+    i = 0
+    #テスト用データを一行ずつ処理していく
+    for item in sadao2:
+        ret={}
+        #ツイートをdicにいれる
+        ret[i]=item
+        
+        #名詞に分解する
+        
+        tmp = get_words(ret)
+        #名詞に分解したものをまとめる
+        
+        tweet_list.append(get_words(ret))
+        #学習用データの名詞リストにテストデータの名詞リストも追加する
+        noun_words.append(tmp[0])
+        
+        ret=""
+        i=i+1
     
-    test_dense = get_vector2(dictionary, test_words)
+    #辞書作成
+    dictionary = filter_dictionary(corpora.Dictionary(noun_words))
+    dictionary.save_as_text("test2.txt")
+    
+    return [dictionary,tweet_list]
 
+
+def create_test_data(noun_words):
+    
+    #辞書の作成とテスト用の名詞リスト作成
+    dictionary,test_words = create_test_dic("sadao_test.txt",noun_words);
+
+    # 保存しておく
+    test_dense=[]
+    
+    #テスト用データを名詞に変換していく
+    for item in test_words:
+        if len(item)>0:
+            test_dense.append(get_vector2(dictionary, item))
     return [dictionary,test_dense]
     
-    
+#学習用テキストを名詞に分解
 def create_words(text_list):
     
     ret = {}
@@ -164,15 +208,12 @@ def get_dictionary(create_flg=True):
         #テキストを名詞に分解する
         words=create_words(text_list)
 
-        #今回テストで使いたい文章。これがbonのツイートなのか貞夫のツイートなのか判別したい
-        test_contents="電車男の報告を待つ緊張に耐えられず、妄想に走る者、壊れる者が出始めた頃、電車男が舞い戻ってきた。 そしてゆっくりと正確に爆撃を始めた。"
-
         train_words = list(words)
 
         #テスト用の特徴語リストを作成
-        dictionary,test_dense = create_test_data(test_contents,train_words)
+        dictionary,test_dense = create_test_data(train_words)
 
-        #特徴語のリストを作成
+        #学習用の特徴語のリストを作成
         dense_list = get_vector(dictionary,words)
 
         #学習＆検証
